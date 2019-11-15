@@ -38,7 +38,14 @@ def scatter_surface(x,y,z):
     #3d plots a points above the xy plane
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(x,y,z, s=10)
+    ax.scatter(x,y,z, s=1)
+    plt.show()
+    
+def twod_cmap_scatter(x,y,z,zString):
+    #plots x,y in 2d and uses z to vary color
+    im = plt.scatter(x,y, s=1, c=z)
+    cbar = plt.colorbar(im, orientation = 'vertical')
+    cbar.set_label(zString, rotation=270, labelpad=20)
     plt.show()
 
 def build_bundle(wells):
@@ -64,10 +71,10 @@ def main():
     #we get the well logs by using the well names in production
     wells = import_well_data(production_data["well name"])
 
-    for well_name, data in wells.items():
-        print(f"{well_name}:")
-        pprint(data.head()) #We'll turn this diagnostic off soon. it clutters
-        print() #this is a simple diagnostic atm
+#     for well_name, data in wells.items():
+#         print(f"{well_name}:")
+#         pprint(data.head()) #We'll turn this diagnostic off soon. it clutters
+#         print() #this is a simple diagnostic atm
 
     print()
     print("Bundle data head:")
@@ -75,11 +82,28 @@ def main():
     pprint(bundle.head())
 
     #we now graph x,y vs porosity for visualisation to locate trends in the data
+    print("Plotting porosity")
     scatter_surface(bundle["x"], bundle["y"], bundle["phi"])
+    twod_cmap_scatter(bundle["x"], bundle["y"], bundle["phi"], "Porosity")
     #for instance phi seems to be increasing with x and decreasing with y. the data looks roughly linear.
+    print("Plotting permiability")
     scatter_surface(bundle["x"], bundle["y"], bundle["k"])
+    twod_cmap_scatter(bundle["x"], bundle["y"], bundle["k"], "Permiability")
+    print("Plotting oil saturation")
     scatter_surface(bundle["x"], bundle["y"], bundle["Co"])
-
+    twod_cmap_scatter(bundle["x"], bundle["y"], bundle["Co"], "Oil Saturation")
+    print("Plotting Poisson's ratio")
+    scatter_surface(bundle["x"], bundle["y"], bundle["nu"])
+    twod_cmap_scatter(bundle["x"], bundle["y"], bundle["nu"], "Poisson's Ratio")
+    print("Plotting Young's Modulus")
+    scatter_surface(bundle["x"], bundle["y"], bundle["E"])
+    twod_cmap_scatter(bundle["x"], bundle["y"], bundle["E"], "Young's Modulus")
+#     We don't need to plot water saturation AND oil saturation because they are just complements of each other 
+#     print("Plotting water saturation")
+#     scatter_surface(bundle["x"], bundle["y"], bundle["Cw"])
+#     twod_cmap_scatter(bundle["x"], bundle["y"], bundle["Cw"], "Water Saturation")
+#     print("Plotting thickness")
+#     scatter_surface(bundle["x"], bundle["y"], bundle["t"])
 
 
 
@@ -87,6 +111,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
