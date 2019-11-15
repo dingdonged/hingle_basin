@@ -63,11 +63,16 @@ def main():
 
     #we get the well logs by using the well names in production
     wells = import_well_data(production_data["well name"])
-
+    frack_lengths = [] #list of number of frack stages
     for well_name, data in wells.items():
         print(f"{well_name}:")
         pprint(data.head()) #We'll turn this diagnostic off soon. it clutters
+        frack_lengths.append(data.shape[0]) #adds the num rows (or number of frack stages for one well)
         print() #this is a simple diagnostic atm
+
+    print()
+    print("Frack stages: ")
+    print(frack_lengths)
 
     print()
     print("Bundle data head:")
