@@ -53,10 +53,14 @@ def build_bundle(wells):
     #our goal will be to plot and smooth this
     #this will be called once so efficiency is not a priority
     #we also rename the columns functionally
-    r = pd.DataFrame(columns=["x","y","phi","k","nu","E", "Cw", "Co", "t"])
+    r = pd.DataFrame(columns=["x","y","phi","k","nu","E", "Cw", "Co", "t", "p", "pw", "pr", "oil", "frac",
+                             "water", "ap", "rf", "fvf"])
     for d in wells.values():
         r = r.append(pd.DataFrame({'x': d["easting"], 'y': d["northing"], 'phi': d["porosity"], 'k': d["permeability"], 'nu': d["Poisson's ratio"], 
-            'E': d["Young's Modulus"], 'Cw': d["water saturation"], 'Co': d["oil saturation"], 't': d["thickness (ft)"]}))
+            'E': d["Young's Modulus"], 'Cw': d["water saturation"], 'Co': d["oil saturation"], 't': d["thickness (ft)"], 
+            'p': d["pump rate (cubic feet/min)"], 'pw': d["proppant weight (lbs)"], 'pr': d["pump rate (cubic feet/min)"],
+            'oil': d["oil"], 'frac': d["frac_stages"], 'water': d["water"], 'ap': d["average_pressure"],
+            'rf': d["recovery_factor"], 'fvf': d["form_vol_factor"]}))
     return r
 
 
@@ -75,6 +79,26 @@ def main():
 #         print(f"{well_name}:")
 #         pprint(data.head()) #We'll turn this diagnostic off soon. it clutters
 #         print() #this is a simple diagnostic atm
+    frack_lengths = [] #list of number of frack stages
+    cumulative_oil = production_data["oil 1"] #list of cumulative oil production
+    cumulative_water = production_data["water 1"]
+    for i in range(2,13):
+        word = "oil " + str(i)
+        water = "water " + str(i)
+        cumulative_oil = cumulative_oil + production_data[word]
+        cumulative_water = cumulative_water + production_data[water]
+
+# compile all the data into wells
+    i = 0
+    for well_name, data in wells.items():
+        frack_lengths.append(data.shape[0])
+        data["oil"] = cumulative_oil[i]
+        data["frac_stages"] = frack_lengths[i]
+        data["water"] = cumulative_water[i]
+        data["average_pressure"] = production_data["average pressure (Pa)"][i]
+        data["recovery_factor"] = production_data["recovery factor"][i]
+        data["form_vol_factor"] = production_data["formation volume factor"][i]
+        i = i+1
 
     print()
     print("Bundle data head:")
