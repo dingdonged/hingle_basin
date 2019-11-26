@@ -54,13 +54,13 @@ def build_bundle(wells):
     #this will be called once so efficiency is not a priority
     #we also rename the columns functionally
     r = pd.DataFrame(columns=["x","y","phi","k","nu","E", "Cw", "Co", "t", "p", "pw", "pr", "oil", "frac",
-                             "water", "ap", "rf", "fvf"])
+                             "water", "ap", "rf", "fvf", "wl"])
     for d in wells.values():
         r = r.append(pd.DataFrame({'x': d["easting"], 'y': d["northing"], 'phi': d["porosity"], 'k': d["permeability"], 'nu': d["Poisson's ratio"], 
             'E': d["Young's Modulus"], 'Cw': d["water saturation"], 'Co': d["oil saturation"], 't': d["thickness (ft)"], 
             'p': d["pump rate (cubic feet/min)"], 'pw': d["proppant weight (lbs)"], 'pr': d["pump rate (cubic feet/min)"],
             'oil': d["oil"], 'frac': d["frac_stages"], 'water': d["water"], 'ap': d["average_pressure"],
-            'rf': d["recovery_factor"], 'fvf': d["form_vol_factor"]}))
+            'rf': d["recovery_factor"], 'fvf': d["form_vol_factor"], 'wl': d["well_length"]}))
     return r
 
 
@@ -91,6 +91,8 @@ def main():
 # compile all the data into wells
     i = 0
     for well_name, data in wells.items():
+        well_length = data.easting.max()-data.easting.min()
+        data["well_length"] = well_length
         frack_lengths.append(data.shape[0])
         data["oil"] = cumulative_oil[i]
         data["frac_stages"] = frack_lengths[i]
@@ -128,6 +130,44 @@ def main():
 #     twod_cmap_scatter(bundle["x"], bundle["y"], bundle["Cw"], "Water Saturation")
 #     print("Plotting thickness")
 #     scatter_surface(bundle["x"], bundle["y"], bundle["t"])
+
+#     let's get the ml going
+    bundle.isnull().any()
+    bundle = bundle.fillna(method='ffill')
+    Y = bundle["oil"].values
+    X = bundle.drop(["oil", "Co"], axis=1).values
+    plt.figure(figsize=(15,10))
+    plt.tight_layout()
+    X_train, X_test, y_train, y_test = train_test_split(X,Y, test_size=0.2, random_state=0)
+    
+#     lasso regression
+    lasso = Lasso()
+    lasso.fit(X_train,y_train)
+    train_score=lasso.score(X_train,y_train)
+    test_score=lasso.score(X_test,y_test)
+    coeff_used = np.sum(lasso.coef_!=0)
+    print("training score:", train_score )
+    print("test score: ", test_score)
+    print("number of features used: ", coeff_used)
+    
+#     linear regression
+    regressor = LinearRegression()  
+    regressor.fit(X_train, y_train)
+    
+    y_pred = regressor.predict(X_test)
+    df = pd.DataFrame({'Actual': y_test, 'Predicted': y_pred})
+    df1 = df.head(25)
+    df1.plot(kind='bar',figsize=(10,8))
+    plt.grid(which='major', linestyle='-', linewidth='0.5', color='green')
+    plt.grid(which='minor', linestyle=':', linewidth='0.5', color='black')
+    plt.show()
+    print('Mean Absolute Error:', metrics.mean_absolute_error(y_test, y_pred))  
+    print('Mean Squared Error:', metrics.mean_squared_error(y_test, y_pred))  
+    print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, y_pred)))
+    regressor_train_score = regressor.score(X_train,y_train)
+    regressor_test_score = regressor.score(X_test,y_test)
+    print("train score:", regressor_train_score)
+    print("test score:", regressor_test_score)
 
 
 
