@@ -16,6 +16,8 @@ from pprint import pprint
 #Cw is saturation of water
 #Co is saturation of oil. Co+Cw=1 usually
 #t is thickness
+#pw  is proppant weight
+#pr is pump rate
 
 
 production_file = "well production.csv" #this stores production data and well file names
@@ -23,6 +25,21 @@ production_file = "well production.csv" #this stores production data and well fi
 def import_production_data():
     #we import production data from a file
     df = pd.read_csv(production_file)
+    oil_total = []
+    #sum up the oil production for each month and add it as a column for each well
+    for ind,row in df.iterrows():
+        total_oil_prod = 0
+        for i in range(1,  12):
+            total_oil_prod += row['oil '+str(i)]
+        oil_total.append(total_oil_prod)
+    df['Total Oil Production'] = oil_total
+    
+    width = []
+    for well_name in df["well name"]:
+        well_df = pd.read_csv(f"{well_name}.csv")
+        #also take the max-min thickness and add that as a column for each well
+        width.append(well_df['easting'][99]-well_df['easting'][0]) #max easting - min easting
+    df['Well Width'] = width
     return df #simple!
 
 def import_well_data(well_names):
@@ -31,7 +48,6 @@ def import_well_data(well_names):
     for well_name in well_names:
         df = pd.read_csv(f"{well_name}.csv")
         r[well_name] = df
-
     return r
 
 def scatter_surface(x,y,z):
@@ -53,10 +69,10 @@ def build_bundle(wells):
     #our goal will be to plot and smooth this
     #this will be called once so efficiency is not a priority
     #we also rename the columns functionally
-    r = pd.DataFrame(columns=["x","y","phi","k","nu","E", "Cw", "Co", "t"])
+    r = pd.DataFrame(columns=["x","y","phi","k","nu","E", "Cw", "Co", "t", "pw", "pr"])
     for d in wells.values():
         r = r.append(pd.DataFrame({'x': d["easting"], 'y': d["northing"], 'phi': d["porosity"], 'k': d["permeability"], 'nu': d["Poisson's ratio"], 
-            'E': d["Young's Modulus"], 'Cw': d["water saturation"], 'Co': d["oil saturation"], 't': d["thickness (ft)"]}))
+            'E': d["Young's Modulus"], 'Cw': d["water saturation"], 'Co': d["oil saturation"], 't': d["thickness (ft)"], 'pw': d["proppant weight (lbs)"], 'pr': d["pump rate (cubic feet/min)"]}))
     return r
 
 
@@ -70,6 +86,7 @@ def main():
 
     #we get the well logs by using the well names in production
     wells = import_well_data(production_data["well name"])
+    total_oil = [] #list of total oil production for each well
     frack_lengths = [] #list of number of frack stages
     for well_name, data in wells.items():
         #print(f"{well_name}:")
@@ -103,6 +120,12 @@ def main():
     print("Plotting Young's Modulus")
     scatter_surface(bundle["x"], bundle["y"], bundle["E"])
     twod_cmap_scatter(bundle["x"], bundle["y"], bundle["E"], "Young's Modulus")
+    print("Plotting Proppant Weight")
+    scatter_surface(bundle["x"], bundle["y"], bundle["pw"])
+    twod_cmap_scatter(bundle["x"], bundle["y"], bundle["pw"], "Proppant Weight")
+    print("Plotting Pump Rate")
+    scatter_surface(bundle["x"], bundle["y"], bundle["pr"])
+    twod_cmap_scatter(bundle["x"], bundle["y"], bundle["pr"], "Pump Rate")
 #     We don't need to plot water saturation AND oil saturation because they are just complements of each other 
 #     print("Plotting water saturation")
 #     scatter_surface(bundle["x"], bundle["y"], bundle["Cw"])
@@ -110,8 +133,9 @@ def main():
 #     print("Plotting thickness")
 #     scatter_surface(bundle["x"], bundle["y"], bundle["t"])
 
-
-
+    #plot total poil production vs well width
+    im = plt.scatter(production_data['Well Width'], production_data["Total Oil Production"], s=10)
+    plt.show()
 
 
 if __name__ == "__main__":
